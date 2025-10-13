@@ -10,18 +10,12 @@ from app.api.dependencies import get_current_active_user
 from app.config import settings
 from app.domain.entities import User
 from app.domain.models import Token, UserCreate, UserResponse
-from app.services.auth_service import (
-    authenticate_user,
-    create_access_token,
-    get_password_hash,
-)
+from app.services.auth_service import authenticate_user, create_access_token, get_password_hash
 
 router = APIRouter()
 
 
-@router.post(
-    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     repository = UserRepository(db)
 
