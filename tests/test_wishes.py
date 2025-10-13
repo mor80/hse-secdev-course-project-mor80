@@ -89,9 +89,7 @@ async def test_get_wishes(client):
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    response = await client.get(
-        "/api/v1/wishes/", headers={"Authorization": f"Bearer {token}"}
-    )
+    response = await client.get("/api/v1/wishes/", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     assert len(response.json()["items"]) == 1
 

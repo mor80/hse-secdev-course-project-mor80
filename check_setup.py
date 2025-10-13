@@ -7,9 +7,7 @@ def check_python_version():
     if sys.version_info < (3, 11):
         print("❌ Python 3.11+ required")
         return False
-    print(
-        f"✅ Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-    )
+    print(f"✅ Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
     return True
 
 
@@ -53,9 +51,7 @@ def check_docker():
     import subprocess
 
     try:
-        result = subprocess.run(
-            ["docker", "--version"], capture_output=True, text=True, timeout=5
-        )
+        result = subprocess.run(["docker", "--version"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             print(f"✅ Docker: {result.stdout.strip()}")
             return True

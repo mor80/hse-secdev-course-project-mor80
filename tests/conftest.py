@@ -11,9 +11,7 @@ from app.main import app
 
 SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=False)
-TestingSessionLocal = async_sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
-)
+TestingSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
 async def override_get_db():
@@ -43,7 +41,5 @@ async def test_db():
 
 @pytest_asyncio.fixture
 async def client(test_db):
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac

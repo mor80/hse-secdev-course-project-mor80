@@ -18,9 +18,7 @@ class WishRepository:
         await self.db.refresh(db_wish)
         return db_wish
 
-    async def get_by_id(
-        self, wish_id: int, owner_id: Optional[int] = None
-    ) -> Optional[Wish]:
+    async def get_by_id(self, wish_id: int, owner_id: Optional[int] = None) -> Optional[Wish]:
         query = select(Wish).where(Wish.id == wish_id)
         if owner_id is not None:
             query = query.where(Wish.owner_id == owner_id)
@@ -88,9 +86,7 @@ class WishRepository:
         result = await self.db.execute(query)
         return result.scalar_one()
 
-    async def count_by_owner(
-        self, owner_id: int, price_filter: Optional[float] = None
-    ) -> int:
+    async def count_by_owner(self, owner_id: int, price_filter: Optional[float] = None) -> int:
         query = select(func.count()).select_from(Wish).where(Wish.owner_id == owner_id)
 
         if price_filter is not None:

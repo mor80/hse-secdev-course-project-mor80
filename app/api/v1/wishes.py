@@ -41,9 +41,7 @@ async def get_wish(
 async def get_wishes(
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    price_filter: Optional[float] = Query(
-        None, ge=0, description="Filter by maximum price"
-    ),
+    price_filter: Optional[float] = Query(None, ge=0, description="Filter by maximum price"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -53,9 +51,7 @@ async def get_wishes(
         wishes = await repository.get_all(limit, offset, price_filter)
         total = await repository.count_all(price_filter)
     else:
-        wishes = await repository.get_by_owner(
-            current_user.id, limit, offset, price_filter
-        )
+        wishes = await repository.get_by_owner(current_user.id, limit, offset, price_filter)
         total = await repository.count_by_owner(current_user.id, price_filter)
 
     return WishListResponse(items=wishes, total=total, limit=limit, offset=offset)

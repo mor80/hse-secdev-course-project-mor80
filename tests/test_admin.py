@@ -17,20 +17,12 @@ async def test_admin_can_access_all_users(client, test_db):
         repository = UserRepository(db)
 
         # Create admin
-        user_data = UserCreate(
-            email="admin@example.com", username="admin", password="admin123"
-        )
-        await repository.create(
-            user_data, get_password_hash("admin123"), role=UserRole.ADMIN
-        )
+        user_data = UserCreate(email="admin@example.com", username="admin", password="admin123")
+        await repository.create(user_data, get_password_hash("admin123"), role=UserRole.ADMIN)
 
         # Create regular user
-        user_data = UserCreate(
-            email="user@example.com", username="user1", password="user12345"
-        )
-        await repository.create(
-            user_data, get_password_hash("user12345"), role=UserRole.USER
-        )
+        user_data = UserCreate(email="user@example.com", username="user1", password="user12345")
+        await repository.create(user_data, get_password_hash("user12345"), role=UserRole.USER)
         break
 
     # Login as admin
@@ -86,20 +78,12 @@ async def test_admin_can_see_all_wishes(client, test_db):
         repository = UserRepository(db)
 
         # Create admin
-        user_data = UserCreate(
-            email="admin@example.com", username="admin", password="admin123"
-        )
-        await repository.create(
-            user_data, get_password_hash("admin123"), role=UserRole.ADMIN
-        )
+        user_data = UserCreate(email="admin@example.com", username="admin", password="admin123")
+        await repository.create(user_data, get_password_hash("admin123"), role=UserRole.ADMIN)
 
         # Create regular user
-        user_data = UserCreate(
-            email="user@example.com", username="user1", password="user12345"
-        )
-        await repository.create(
-            user_data, get_password_hash("user123"), role=UserRole.USER
-        )
+        user_data = UserCreate(email="user@example.com", username="user1", password="user12345")
+        await repository.create(user_data, get_password_hash("user123"), role=UserRole.USER)
         break
 
     # Login as user and create wish
@@ -145,20 +129,12 @@ async def test_admin_can_delete_any_wish(client, test_db):
         repository = UserRepository(db)
 
         # Create admin
-        user_data = UserCreate(
-            email="admin@example.com", username="admin", password="admin123"
-        )
-        await repository.create(
-            user_data, get_password_hash("admin123"), role=UserRole.ADMIN
-        )
+        user_data = UserCreate(email="admin@example.com", username="admin", password="admin123")
+        await repository.create(user_data, get_password_hash("admin123"), role=UserRole.ADMIN)
 
         # Create regular user
-        user_data = UserCreate(
-            email="user@example.com", username="user1", password="user12345"
-        )
-        await repository.create(
-            user_data, get_password_hash("user123"), role=UserRole.USER
-        )
+        user_data = UserCreate(email="user@example.com", username="user1", password="user12345")
+        await repository.create(user_data, get_password_hash("user123"), role=UserRole.USER)
         break
 
     # Login as user and create wish

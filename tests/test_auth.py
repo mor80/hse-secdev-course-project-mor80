@@ -73,9 +73,7 @@ async def test_get_current_user_info(client):
     )
     token = response.json()["access_token"]
 
-    response = await client.get(
-        "/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"}
-    )
+    response = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     assert response.json()["email"] == "test@example.com"
     assert response.json()["username"] == "testuser"

@@ -28,9 +28,7 @@ async def create_admin():
         user_data = UserCreate(email=email, username=username, password=password)
         hashed_password = get_password_hash(password)
 
-        admin_user = await repository.create(
-            user_data, hashed_password, role=UserRole.ADMIN
-        )
+        admin_user = await repository.create(user_data, hashed_password, role=UserRole.ADMIN)
 
         print("Admin user created successfully!")
         print(f"ID: {admin_user.id}")

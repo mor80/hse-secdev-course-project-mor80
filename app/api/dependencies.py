@@ -23,9 +23,7 @@ async def get_current_user(
 
     try:
         token = credentials.credentials
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: int = int(payload.get("sub"))
         if user_id is None:
             raise credentials_exception
@@ -51,7 +49,5 @@ async def get_current_admin_user(
     current_user: User = Depends(get_current_active_user),
 ) -> User:
     if current_user.role != UserRole.ADMIN.value:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user

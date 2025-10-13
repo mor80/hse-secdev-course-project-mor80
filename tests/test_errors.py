@@ -17,9 +17,7 @@ async def test_not_found_wish(client):
     )
     token = response.json()["access_token"]
 
-    r = await client.get(
-        "/api/v1/wishes/999", headers={"Authorization": f"Bearer {token}"}
-    )
+    r = await client.get("/api/v1/wishes/999", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 404
     body = r.json()
     assert body["code"] == "NOT_FOUND"

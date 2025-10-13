@@ -27,9 +27,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(
-    title=settings.APP_NAME, version="1.0.0", description="Secure Wishlist API"
-)
+app = FastAPI(title=settings.APP_NAME, version="1.0.0", description="Secure Wishlist API")
 
 app.add_middleware(RequestLoggingMiddleware)
 
@@ -63,9 +61,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 @app.exception_handler(DomainValidationError)
-async def domain_validation_exception_handler(
-    request: Request, exc: DomainValidationError
-):
+async def domain_validation_exception_handler(request: Request, exc: DomainValidationError):
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"code": "VALIDATION_ERROR", "message": str(exc), "details": {}},
