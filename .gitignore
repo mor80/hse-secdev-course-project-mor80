@@ -9,8 +9,19 @@ build/
 .env
 .pytest_cache/
 .coverage
+
+# JavaScript/Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+package-lock.json
+
 # IDE
 .vscode/
 .idea/
+
 # OS
 .DS_Store
+
+# Ruff cache
+.ruff_cache/

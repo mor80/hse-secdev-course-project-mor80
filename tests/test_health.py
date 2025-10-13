@@ -1,11 +1,19 @@
-from fastapi.testclient import TestClient
-
-from app.main import app
-
-client = TestClient(app)
+import pytest
 
 
-def test_health_ok():
-    r = client.get("/health")
+@pytest.mark.asyncio
+async def test_health_ok(client):
+    r = await client.get("/health")
     assert r.status_code == 200
-    assert r.json() == {"status": "ok"}
+    data = r.json()
+    assert data["status"] == "ok"
+    assert data["service"] == "wishlist-api"
+
+
+@pytest.mark.asyncio
+async def test_root(client):
+    r = await client.get("/")
+    assert r.status_code == 200
+    data = r.json()
+    assert "message" in data
+    assert "version" in data
