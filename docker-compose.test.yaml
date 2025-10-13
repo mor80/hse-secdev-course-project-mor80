@@ -1,0 +1,17 @@
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      APP_NAME: "Wishlist API Test"
+      ENV: "test"
+      DEBUG: "True"
+      SECRET_KEY: "test-secret-key"
+      ALGORITHM: "HS256"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+    volumes:
+      - .:/app
+    command: >
+      sh -c "pip install -r requirements-dev.txt && pytest -v --cov=app tests/"

@@ -1,20 +1,31 @@
-# Build stage
-FROM python:3.11-slim AS build
-WORKDIR /app
-COPY requirements.txt requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
-COPY . .
-RUN pytest -q
-
-# Runtime stage
 FROM python:3.11-slim
+
 WORKDIR /app
-RUN useradd -m appuser
-COPY --from=build /usr/local/lib/python3.11 /usr/local/lib/python3.11
-COPY --from=build /usr/local/bin /usr/local/bin
+
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -u 1000 appuser
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY . .
-EXPOSE 8000
-HEALTHCHECK CMD curl -f http://localhost:8000/health || exit 1
+
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+RUN chown -R appuser:appuser /app
+
 USER appuser
+
+EXPOSE 8000
+
 ENV PYTHONUNBUFFERED=1
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
