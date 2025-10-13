@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    DATABASE_URL: str = "postgresql://user:password@localhost:5432/wishlist_db"
+    DATABASE_URL: str = "postgresql+asyncpg://user:password@localhost:5432/wishlist_db"
 
     CORS_ORIGINS: List[str] = []
 
