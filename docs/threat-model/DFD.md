@@ -39,14 +39,14 @@ flowchart TB
     end
 
     %% Flows
-    User -->|F1: HTTPS<br/>POST /auth/register| LoadBalancer
-    User -->|F2: HTTPS<br/>POST /auth/login| LoadBalancer
-    User -->|F3: HTTPS + JWT<br/>GET /wishes| LoadBalancer
-    User -->|F4: HTTPS + JWT<br/>POST /wishes| LoadBalancer
-    User -->|F5: HTTPS + JWT<br/>PATCH /wishes/:id| LoadBalancer
-    User -->|F6: HTTPS + JWT<br/>DELETE /wishes/:id| LoadBalancer
-    Admin -->|F7: HTTPS + JWT<br/>GET /admin/users| LoadBalancer
-    Attacker -.->|F8: Attack Vectors<br/>SQLi, XSS, Brute-force| LoadBalancer
+    User -->|F1: HTTPS POST /auth/register| LoadBalancer
+    User -->|F2: HTTPS POST /auth/login| LoadBalancer
+    User -->|F3: HTTPS + JWT GET /wishes| LoadBalancer
+    User -->|F4: HTTPS + JWT POST /wishes| LoadBalancer
+    User -->|F5: HTTPS + JWT PATCH /wishes/:id| LoadBalancer
+    User -->|F6: HTTPS + JWT DELETE /wishes/:id| LoadBalancer
+    Admin -->|F7: HTTPS + JWT GET /admin/users| LoadBalancer
+    Attacker -.->|F8: Attack Vectors SQLi, XSS, Brute-force| LoadBalancer
 
     LoadBalancer -->|F9: Rate Check| RateLimit
     RateLimit -->|F10: Forward Request| API
@@ -57,7 +57,7 @@ flowchart TB
     AuthService -->|F14: Query Users| DB
 
     API -->|F15: CRUD Wishes| WishService
-    WishService -->|F16: Query/Insert<br/>Parameterized| DB
+    WishService -->|F16: Query/Insert Parameterized| DB
 
     API -->|F17: Admin Operations| AdminService
     AdminService -->|F18: Query All Users| DB
@@ -65,7 +65,7 @@ flowchart TB
     AuthService -.->|F19: Read SECRET_KEY| Secrets
     API -.->|F20: Write Logs| Logs
 
-    AuthService -.->|F21: Send Email<br/>(Future)| SMTP
+    AuthService -.->|F21: Send Email Future| SMTP
 
     %% Styling
     classDef external fill:#ff6b6b,stroke:#c92a2a,color:#fff
