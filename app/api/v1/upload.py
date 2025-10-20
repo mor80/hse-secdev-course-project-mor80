@@ -1,9 +1,13 @@
+import inspect
 import logging
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.adapters.database import get_db
 from app.api import dependencies
 from app.api.error_handler import (
     internal_error_response,
@@ -18,9 +22,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+async def _resolve_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(dependencies.security),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """
+    Resolve the current user while allowing tests to patch the underlying dependency.
+    """
+    resolver = getattr(dependencies, "get_current_user")
+    result = resolver(credentials, db)
+    if inspect.isawaitable(result):
+        return await result
+    return result
+
+
 @router.post("/avatar")
 async def upload_avatar(
-    file: UploadFile = File(...), current_user: User = Depends(dependencies.get_current_user)
+    file: UploadFile = File(...), current_user: User = Depends(_resolve_current_user)
 ) -> Dict[str, Any]:
     """
     Upload user avatar with security validation.
@@ -78,7 +96,7 @@ async def upload_avatar(
 
 @router.get("/avatar/{filename}")
 async def get_avatar(
-    filename: str, current_user: User = Depends(dependencies.get_current_user)
+    filename: str, current_user: User = Depends(_resolve_current_user)
 ) -> JSONResponse:
     """
     Get user avatar file.
@@ -116,7 +134,7 @@ async def get_avatar(
 
 @router.delete("/avatar/{filename}")
 async def delete_avatar(
-    filename: str, current_user: User = Depends(dependencies.get_current_user)
+    filename: str, current_user: User = Depends(_resolve_current_user)
 ) -> Dict[str, Any]:
     """
     Delete user avatar.
