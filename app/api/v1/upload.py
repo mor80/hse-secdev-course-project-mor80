@@ -1,5 +1,6 @@
 import inspect
 import logging
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -20,6 +21,7 @@ from app.services import file_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+UPLOAD_BASE = file_service.UPLOAD_DIR
 
 
 async def _resolve_current_user(
@@ -77,7 +79,7 @@ async def upload_avatar(
 
         # Validate and save file securely
         success, error_message, saved_path = file_service.secure_save(
-            base_dir="/app/uploads", filename_hint=file.filename or "avatar", data=content
+            base_dir=UPLOAD_BASE, filename_hint=file.filename or "avatar", data=content
         )
 
         if not success:
@@ -131,7 +133,7 @@ async def get_avatar(
             return not_found_error_response("Avatar not found")
 
         # Build file path
-        file_path = f"/app/uploads/{filename}"
+        file_path = str(Path(UPLOAD_BASE) / filename)
         file_info = file_service.get_file_info(file_path)
 
         if not file_info:
@@ -169,7 +171,7 @@ async def delete_avatar(
             return not_found_error_response("Avatar not found")
 
         # Build file path
-        file_path = f"/app/uploads/{filename}"
+        file_path = str(Path(UPLOAD_BASE) / filename)
 
         # Check if file exists and belongs to user (simplified for now)
         file_info = file_service.get_file_info(file_path)
