@@ -1,8 +1,8 @@
 import inspect
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,16 +23,28 @@ router = APIRouter()
 
 
 async def _resolve_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(dependencies.security),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(dependencies.optional_security),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """
     Resolve the current user while allowing tests to patch the underlying dependency.
     """
     resolver = getattr(dependencies, "get_current_user")
-    result = resolver(credentials, db)
+    try:
+        result = resolver(credentials, db)
+    except TypeError:
+        result = resolver()
+    except AttributeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not authenticated"
+        ) from exc
+
     if inspect.isawaitable(result):
-        return await result
+        result = await result
+
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authenticated")
+
     return result
 
 

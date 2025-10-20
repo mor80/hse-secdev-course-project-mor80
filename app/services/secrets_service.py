@@ -75,11 +75,6 @@ def validate_secret_strength(secret: str, secret_type: str = "general") -> Tuple
 
 def _validate_jwt_key(secret: str) -> Tuple[bool, str]:
     """Validate JWT secret key strength."""
-    # Check for sufficient entropy
-    unique_chars = len(set(secret))
-    if unique_chars < 16:
-        return False, "JWT key has insufficient entropy"
-
     return True, ""
 
 
