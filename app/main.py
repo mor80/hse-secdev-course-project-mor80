@@ -15,6 +15,7 @@ logging.basicConfig(
         '"message": "%(message)s", "request_id": "%(request_id)s"}'
     ),
     datefmt="%Y-%m-%d %H:%M:%S",
+    defaults={"request_id": "N/A"},
 )
 
 logger = logging.getLogger(__name__)
