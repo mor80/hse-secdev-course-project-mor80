@@ -59,6 +59,11 @@ class WishListResponse(BaseModel):
     offset: int
 
 
+class LoginRequest(BaseModel):
+    username: str = Field(..., min_length=1, max_length=255, description="Login identifier")
+    password: str = Field(..., min_length=1, max_length=128, description="User password")
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str

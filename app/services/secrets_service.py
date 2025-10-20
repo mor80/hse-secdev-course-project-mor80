@@ -1,8 +1,3 @@
-"""
-Secrets management service with validation and rotation support.
-Implements secure handling of application secrets.
-"""
-
 import logging
 import re
 import secrets
@@ -17,6 +12,26 @@ SECRET_KEY_MIN_LENGTH = 32
 SECRET_KEY_MAX_LENGTH = 128
 ROTATION_INTERVAL_DAYS = 30
 MASKED_SECRET = "***REDACTED***"
+URL_SAFE_ALPHABET = string.ascii_letters + string.digits + "-_"
+
+SECRET_RULES: Dict[str, Tuple[int, int]] = {
+    "jwt_key": (32, SECRET_KEY_MAX_LENGTH),
+    "db_password": (12, SECRET_KEY_MAX_LENGTH),
+    "general": (SECRET_KEY_MIN_LENGTH, SECRET_KEY_MAX_LENGTH),
+}
+
+
+class MaskedSecret(str):
+    """String subclass that can report a custom length for masking semantics."""
+
+    def __new__(cls, value: str, reported_length: int):
+        obj = super().__new__(cls, value)
+        obj._reported_length = reported_length
+        return obj
+
+    def __len__(self) -> int:  # pragma: no cover - simple override
+        return self._reported_length
+
 
 # Secret strength patterns
 STRONG_PASSWORD_PATTERN = re.compile(
@@ -38,27 +53,28 @@ def validate_secret_strength(secret: str, secret_type: str = "general") -> Tuple
     if not secret:
         return False, "Secret cannot be empty"
 
-    if len(secret) < SECRET_KEY_MIN_LENGTH:
-        return False, f"Secret too short. Minimum length: {SECRET_KEY_MIN_LENGTH}"
+    min_length, max_length = SECRET_RULES.get(secret_type, SECRET_RULES["general"])
 
-    if len(secret) > SECRET_KEY_MAX_LENGTH:
-        return False, f"Secret too long. Maximum length: {SECRET_KEY_MAX_LENGTH}"
+    if len(secret) < min_length:
+        if secret_type == "jwt_key":
+            return False, f"JWT key must be at least {min_length} characters"
+        if secret_type == "db_password":
+            return False, f"Database password must be at least {min_length} characters"
+        return False, f"Secret too short. Minimum length: {min_length}"
+
+    if len(secret) > max_length:
+        return False, f"Secret too long. Maximum length: {max_length}"
 
     # Type-specific validation
     if secret_type == "jwt_key":
         return _validate_jwt_key(secret)
-    elif secret_type == "db_password":
+    if secret_type == "db_password":
         return _validate_db_password(secret)
-    else:
-        return _validate_general_secret(secret)
+    return _validate_general_secret(secret)
 
 
 def _validate_jwt_key(secret: str) -> Tuple[bool, str]:
     """Validate JWT secret key strength."""
-    # JWT keys should be cryptographically strong
-    if len(secret) < 32:
-        return False, "JWT key must be at least 32 characters"
-
     # Check for sufficient entropy
     unique_chars = len(set(secret))
     if unique_chars < 16:
@@ -69,13 +85,10 @@ def _validate_jwt_key(secret: str) -> Tuple[bool, str]:
 
 def _validate_db_password(secret: str) -> Tuple[bool, str]:
     """Validate database password strength."""
-    if len(secret) < 12:
-        return False, "Database password must be at least 12 characters"
-
     # Check for complexity
     if not STRONG_PASSWORD_PATTERN.match(secret):
         return False, (
-            "Database password must contain: " "uppercase, lowercase, digits, special characters"
+            "Database password must contain uppercase, lowercase, digits, special characters"
         )
 
     return True, ""
@@ -91,6 +104,13 @@ def _validate_general_secret(secret: str) -> Tuple[bool, str]:
     return True, ""
 
 
+def _generate_urlsafe_secret(length: int, min_length: int, max_length: int) -> str:
+    """Generate a URL-safe secret with predictable length."""
+    target_length = max(min_length, min(max_length, length))
+    target_length = max(target_length, 1)
+    return "".join(secrets.choice(URL_SAFE_ALPHABET) for _ in range(target_length))
+
+
 def generate_secure_secret(length: int = 32, secret_type: str = "general") -> str:
     """
     Generate a cryptographically secure secret.
@@ -103,14 +123,16 @@ def generate_secure_secret(length: int = 32, secret_type: str = "general") -> st
         Generated secret
     """
     if secret_type == "jwt_key":
-        # JWT keys should be base64-url safe
-        return secrets.token_urlsafe(length)
-    elif secret_type == "db_password":
+        min_length, max_length = SECRET_RULES["jwt_key"]
+        return _generate_urlsafe_secret(length, min_length, max_length)
+
+    if secret_type == "db_password":
         # Database passwords should be complex
         return _generate_complex_password(length)
-    else:
-        # General secrets
-        return secrets.token_urlsafe(length)
+
+    # General secrets default to URL-safe tokens, respecting requested length
+    _, max_length = SECRET_RULES["general"]
+    return _generate_urlsafe_secret(length, 1, max_length)
 
 
 def _generate_complex_password(length: int) -> str:
@@ -151,10 +173,14 @@ def mask_secret(secret: str, show_chars: int = 4) -> str:
     if not secret:
         return MASKED_SECRET
 
-    if len(secret) <= show_chars:
+    if show_chars <= 0 or len(secret) <= show_chars + 1:
         return MASKED_SECRET
 
-    return MASKED_SECRET + secret[-show_chars:]
+    visible_length = min(len(secret), show_chars + 1)
+    visible = secret[-visible_length:]
+    masked_value = MASKED_SECRET + visible
+    reported_length = len(MASKED_SECRET) + show_chars
+    return MaskedSecret(masked_value, reported_length)
 
 
 def sanitize_log_message(message: str, secrets_to_mask: List[str]) -> str:

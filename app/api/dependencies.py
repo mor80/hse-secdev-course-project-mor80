@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -9,6 +11,7 @@ from app.config import settings
 from app.domain.entities import User, UserRole
 
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
@@ -43,6 +46,16 @@ async def get_current_active_user(
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+async def get_optional_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    if credentials is None:
+        return None
+
+    return await get_current_user(credentials, db)
 
 
 async def get_current_admin_user(

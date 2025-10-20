@@ -1,15 +1,10 @@
-"""
-File upload endpoints with security validation.
-Implements RFC 7807 error responses and secure file handling.
-"""
-
 import logging
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import JSONResponse
 
-from app.api.dependencies import get_current_user
+from app.api import dependencies
 from app.api.error_handler import (
     internal_error_response,
     not_found_error_response,
@@ -25,7 +20,7 @@ router = APIRouter()
 
 @router.post("/avatar")
 async def upload_avatar(
-    file: UploadFile = File(...), current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...), current_user: User = Depends(dependencies.get_current_user)
 ) -> Dict[str, Any]:
     """
     Upload user avatar with security validation.
@@ -82,7 +77,9 @@ async def upload_avatar(
 
 
 @router.get("/avatar/{filename}")
-async def get_avatar(filename: str, current_user: User = Depends(get_current_user)) -> JSONResponse:
+async def get_avatar(
+    filename: str, current_user: User = Depends(dependencies.get_current_user)
+) -> JSONResponse:
     """
     Get user avatar file.
 
@@ -119,7 +116,7 @@ async def get_avatar(filename: str, current_user: User = Depends(get_current_use
 
 @router.delete("/avatar/{filename}")
 async def delete_avatar(
-    filename: str, current_user: User = Depends(get_current_user)
+    filename: str, current_user: User = Depends(dependencies.get_current_user)
 ) -> Dict[str, Any]:
     """
     Delete user avatar.

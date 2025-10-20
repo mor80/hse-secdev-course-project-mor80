@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from fastapi import Request, status
@@ -18,6 +18,8 @@ class ProblemDetail(BaseModel):
     detail: str
     correlation_id: str
     instance: Optional[str] = None
+    message: Optional[str] = None
+    validation_errors: Optional[List[Dict[str, Any]]] = None
     extensions: Optional[Dict[str, Any]] = None
 
 
@@ -29,6 +31,7 @@ def create_problem(
     instance: Optional[str] = None,
     extensions: Optional[Dict[str, Any]] = None,
     request: Optional[Request] = None,
+    validation_errors: Optional[List[Dict[str, Any]]] = None,
 ) -> ProblemDetail:
     """
     Create a standardized problem detail response.
@@ -65,6 +68,8 @@ def create_problem(
         detail=detail,
         correlation_id=correlation_id,
         instance=instance,
+        message=detail,
+        validation_errors=validation_errors,
         extensions=extensions,
     )
 
@@ -77,6 +82,7 @@ def problem_response(
     instance: Optional[str] = None,
     extensions: Optional[Dict[str, Any]] = None,
     request: Optional[Request] = None,
+    validation_errors: Optional[List[Dict[str, Any]]] = None,
 ) -> JSONResponse:
     """
     Create a JSONResponse with RFC 7807 problem details.
@@ -92,6 +98,7 @@ def problem_response(
         instance=instance,
         extensions=extensions,
         request=request,
+        validation_errors=validation_errors,
     )
 
     return JSONResponse(content=problem.model_dump(exclude_none=True), status_code=status_code)
@@ -114,7 +121,7 @@ def validation_error_response(errors: list, request: Optional[Request] = None) -
         detail="Request validation failed",
         type_uri="https://api.wishlist.com/errors/validation-error",
         instance=request.url.path if request else None,
-        extensions={"validation_errors": errors},
+        validation_errors=errors,
         request=request,
     )
 
