@@ -59,7 +59,18 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 extra={"path": request.url.path, "method": request.method},
             )
 
-            if exc.status_code == 401:
+            if exc.status_code == 400:
+                from app.api.error_handler import problem_response
+
+                return problem_response(
+                    status_code=400,
+                    title="Bad Request",
+                    detail=str(exc.detail),
+                    type_uri="https://api.wishlist.com/errors/bad-request",
+                    instance=request.url.path if request else None,
+                    request=request,
+                )
+            elif exc.status_code == 401:
                 return authentication_error_response(str(exc.detail), request)
             elif exc.status_code == 403:
                 from app.api.error_handler import authorization_error_response
@@ -69,6 +80,17 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 from app.api.error_handler import not_found_error_response
 
                 return not_found_error_response("Resource", request)
+            elif exc.status_code == 409:
+                from app.api.error_handler import problem_response
+
+                return problem_response(
+                    status_code=409,
+                    title="Conflict",
+                    detail=str(exc.detail),
+                    type_uri="https://api.wishlist.com/errors/conflict",
+                    instance=request.url.path if request else None,
+                    request=request,
+                )
             else:
                 return internal_error_response(
                     str(exc.detail), request, production_mode=settings.ENV == "production"
