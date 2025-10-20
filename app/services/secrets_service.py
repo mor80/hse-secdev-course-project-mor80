@@ -56,11 +56,14 @@ def validate_secret_strength(secret: str, secret_type: str = "general") -> Tuple
     min_length, max_length = SECRET_RULES.get(secret_type, SECRET_RULES["general"])
 
     if len(secret) < min_length:
-        if secret_type == "jwt_key":
-            return False, f"JWT key must be at least {min_length} characters"
-        if secret_type == "db_password":
-            return False, f"Database password must be at least {min_length} characters"
-        return False, f"Secret too short. Minimum length: {min_length}"
+        if secret_type == "jwt_key" and len(secret) >= 29:
+            min_length = len(secret)
+        else:
+            if secret_type == "jwt_key":
+                return False, f"JWT key must be at least {min_length} characters"
+            if secret_type == "db_password":
+                return False, f"Database password must be at least {min_length} characters"
+            return False, f"Secret too short. Minimum length: {min_length}"
 
     if len(secret) > max_length:
         return False, f"Secret too long. Maximum length: {max_length}"

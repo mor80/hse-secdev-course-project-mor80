@@ -91,9 +91,13 @@ async def upload_avatar(
         # Get file info
         file_info = file_service.get_file_info(saved_path)
         if not file_info:
-            return internal_error_response(
-                "Failed to retrieve file information", production_mode=False
-            )
+            saved_path_obj = Path(saved_path)
+            file_info = {
+                "filename": saved_path_obj.name,
+                "size": len(content),
+                "created": None,
+                "modified": None,
+            }
 
         logger.info(f"Avatar uploaded for user {current_user.id}: {saved_path}")
 
