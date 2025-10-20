@@ -8,14 +8,28 @@ from app.api.middleware import RequestLoggingMiddleware
 from app.api.v1 import admin, auth, upload, wishes
 from app.config import settings
 
+
+# Configure logging with custom formatter to handle missing request_id
+class RequestIDFormatter(logging.Formatter):
+    def format(self, record):
+        if not hasattr(record, "request_id"):
+            record.request_id = "N/A"
+        return super().format(record)
+
+
+# Set up logging
+handler = logging.StreamHandler()
+handler.setFormatter(
+    RequestIDFormatter(
+        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", '
+        '"message": "%(message)s", "request_id": "%(request_id)s"}',
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+)
+
 logging.basicConfig(
     level=logging.INFO,
-    format=(
-        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", '
-        '"message": "%(message)s", "request_id": "%(request_id)s"}'
-    ),
-    datefmt="%Y-%m-%d %H:%M:%S",
-    defaults={"request_id": "N/A"},
+    handlers=[handler],
 )
 
 logger = logging.getLogger(__name__)
