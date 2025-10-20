@@ -15,7 +15,7 @@ from app.api.error_handler import (
     validation_error_response,
 )
 from app.domain.entities import User
-from app.services.file_service import ensure_upload_directory, get_file_info, secure_save
+from app.services import file_service
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +39,13 @@ async def _resolve_current_user(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not authenticated"
         ) from exc
 
-    if inspect.isawaitable(result):
-        result = await result
+    try:
+        if inspect.isawaitable(result):
+            result = await result
+    except AttributeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not authenticated"
+        ) from exc
 
     if result is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authenticated")
@@ -64,14 +69,14 @@ async def upload_avatar(
     """
     try:
         # Ensure upload directory exists
-        if not ensure_upload_directory():
+        if not file_service.ensure_upload_directory():
             return internal_error_response("Upload service unavailable", production_mode=False)
 
         # Read file content
         content = await file.read()
 
         # Validate and save file securely
-        success, error_message, saved_path = secure_save(
+        success, error_message, saved_path = file_service.secure_save(
             base_dir="/app/uploads", filename_hint=file.filename or "avatar", data=content
         )
 
@@ -82,7 +87,7 @@ async def upload_avatar(
             )
 
         # Get file info
-        file_info = get_file_info(saved_path)
+        file_info = file_service.get_file_info(saved_path)
         if not file_info:
             return internal_error_response(
                 "Failed to retrieve file information", production_mode=False
@@ -127,7 +132,7 @@ async def get_avatar(
 
         # Build file path
         file_path = f"/app/uploads/{filename}"
-        file_info = get_file_info(file_path)
+        file_info = file_service.get_file_info(file_path)
 
         if not file_info:
             return not_found_error_response("Avatar not found")
@@ -167,16 +172,14 @@ async def delete_avatar(
         file_path = f"/app/uploads/{filename}"
 
         # Check if file exists and belongs to user (simplified for now)
-        file_info = get_file_info(file_path)
+        file_info = file_service.get_file_info(file_path)
         if not file_info:
             return not_found_error_response("Avatar not found")
 
         # TODO: Implement ownership validation
         # For now, allow deletion (will be improved in next iteration)
 
-        from app.services.file_service import delete_file
-
-        success = delete_file(file_path)
+        success = file_service.delete_file(file_path)
 
         if success:
             logger.info(f"Avatar deleted for user {current_user.id}: {filename}")
