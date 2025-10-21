@@ -1,13 +1,17 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import bcrypt
 from jose import JWTError, jwt
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.domain.entities import User
+
+logger = logging.getLogger(__name__)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -34,7 +38,13 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> Optional[User]:
-    result = await db.execute(select(User).where(User.email == email))
+    try:
+        result = await db.execute(select(User).where(User.email == email))
+    except SQLAlchemyError as exc:
+        logger.error("Authentication query failed: %s", exc)
+        await db.rollback()
+        return None
+
     user = result.scalar_one_or_none()
     if not user:
         return None

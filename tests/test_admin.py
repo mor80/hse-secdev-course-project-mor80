@@ -62,7 +62,14 @@ async def test_regular_user_cannot_access_admin_endpoint(client):
         "/api/v1/admin/users", headers={"Authorization": f"Bearer {user_token}"}
     )
     assert response.status_code == 403
-    assert response.json()["code"] == "FORBIDDEN"
+    # Check RFC 7807 format
+    data = response.json()
+    assert "type" in data
+    assert "title" in data
+    assert "status" in data
+    assert "detail" in data
+    assert "correlation_id" in data
+    assert data["type"] == "https://api.wishlist.com/errors/authz-error"
 
 
 @pytest.mark.asyncio

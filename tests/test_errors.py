@@ -20,8 +20,13 @@ async def test_not_found_wish(client):
     r = await client.get("/api/v1/wishes/999", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 404
     body = r.json()
-    assert body["code"] == "NOT_FOUND"
-    assert "not found" in body["message"].lower()
+    # Check RFC 7807 format
+    assert "type" in body
+    assert "title" in body
+    assert "status" in body
+    assert "detail" in body
+    assert "correlation_id" in body
+    assert body["type"] == "https://api.wishlist.com/errors/not-found"
 
 
 @pytest.mark.asyncio
@@ -36,7 +41,14 @@ async def test_validation_error_invalid_email(client):
     )
     assert r.status_code == 422
     body = r.json()
-    assert body["code"] == "VALIDATION_ERROR"
+    # Check RFC 7807 format
+    assert "type" in body
+    assert "title" in body
+    assert "status" in body
+    assert "detail" in body
+    assert "correlation_id" in body
+    assert "validation_errors" in body
+    assert body["type"] == "https://api.wishlist.com/errors/validation-error"
 
 
 @pytest.mark.asyncio
@@ -47,4 +59,11 @@ async def test_validation_error_short_password(client):
     )
     assert r.status_code == 422
     body = r.json()
-    assert body["code"] == "VALIDATION_ERROR"
+    # Check RFC 7807 format
+    assert "type" in body
+    assert "title" in body
+    assert "status" in body
+    assert "detail" in body
+    assert "correlation_id" in body
+    assert "validation_errors" in body
+    assert body["type"] == "https://api.wishlist.com/errors/validation-error"

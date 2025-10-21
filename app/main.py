@@ -1,36 +1,56 @@
 import logging
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
-from app.api.middleware import RequestLoggingMiddleware
-from app.api.v1 import admin, auth, wishes
-from app.config import settings
-from app.domain.exceptions import (
-    AuthenticationError,
-    AuthorizationError,
-    DuplicateError,
-    NotFoundError,
+from app.api.error_handler import (
+    authentication_error_response,
+    authorization_error_response,
+    not_found_error_response,
+    problem_response,
+    validation_error_response,
 )
-from app.domain.exceptions import ValidationError as DomainValidationError
+from app.api.error_middleware import ErrorHandlingMiddleware
+from app.api.middleware import RequestLoggingMiddleware
+from app.api.v1 import admin, auth, upload, wishes
+from app.config import settings
+
+
+# Configure logging with custom formatter to handle missing request_id
+class RequestIDFormatter(logging.Formatter):
+    def format(self, record):
+        if not hasattr(record, "request_id"):
+            record.request_id = "N/A"
+        return super().format(record)
+
+
+# Set up logging
+handler = logging.StreamHandler()
+handler.setFormatter(
+    RequestIDFormatter(
+        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", '
+        '"message": "%(message)s", "request_id": "%(request_id)s"}',
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+)
 
 logging.basicConfig(
     level=logging.INFO,
-    format=(
-        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", '
-        '"message": "%(message)s", "request_id": "%(request_id)s"}'
-    ),
-    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[handler],
 )
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.APP_NAME, version="1.0.0", description="Secure Wishlist API")
 
+# Add error handling middleware first (outermost)
+app.add_middleware(ErrorHandlingMiddleware)
+
+# Add request logging middleware
 app.add_middleware(RequestLoggingMiddleware)
 
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=(
@@ -45,95 +65,60 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(wishes.router, prefix="/api/v1/wishes", tags=["wishes"])
+app.include_router(upload.router, prefix="/api/v1/upload", tags=["file-upload"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
-            "code": "VALIDATION_ERROR",
-            "message": "Invalid request data",
-            "details": exc.errors(),
-        },
-    )
-
-
-@app.exception_handler(DomainValidationError)
-async def domain_validation_exception_handler(request: Request, exc: DomainValidationError):
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content={"code": "VALIDATION_ERROR", "message": str(exc), "details": {}},
-    )
-
-
-@app.exception_handler(AuthenticationError)
-async def authentication_exception_handler(request: Request, exc: AuthenticationError):
-    return JSONResponse(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        content={"code": "AUTHENTICATION_ERROR", "message": str(exc), "details": {}},
-    )
-
-
-@app.exception_handler(AuthorizationError)
-async def authorization_exception_handler(request: Request, exc: AuthorizationError):
-    return JSONResponse(
-        status_code=status.HTTP_403_FORBIDDEN,
-        content={"code": "AUTHORIZATION_ERROR", "message": str(exc), "details": {}},
-    )
-
-
-@app.exception_handler(NotFoundError)
-async def not_found_exception_handler(request: Request, exc: NotFoundError):
-    return JSONResponse(
-        status_code=status.HTTP_404_NOT_FOUND,
-        content={"code": "NOT_FOUND", "message": str(exc), "details": {}},
-    )
-
-
-@app.exception_handler(DuplicateError)
-async def duplicate_exception_handler(request: Request, exc: DuplicateError):
-    return JSONResponse(
-        status_code=status.HTTP_409_CONFLICT,
-        content={"code": "DUPLICATE_ERROR", "message": str(exc), "details": {}},
-    )
+# Add exception handlers for RFC 7807 compliance
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    detail = exc.detail if isinstance(exc.detail, str) else "HTTP error"
-    code_map = {
-        400: "BAD_REQUEST",
-        401: "UNAUTHORIZED",
-        403: "FORBIDDEN",
-        404: "NOT_FOUND",
-        409: "CONFLICT",
-        422: "VALIDATION_ERROR",
-        500: "INTERNAL_ERROR",
-    }
-    code = code_map.get(exc.status_code, "HTTP_ERROR")
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"code": code, "message": detail, "details": {}},
-    )
+    """Handle HTTP exceptions with RFC 7807 format."""
+    if exc.status_code == 400:
+        return problem_response(
+            status_code=400,
+            title="Bad Request",
+            detail=str(exc.detail),
+            type_uri="https://api.wishlist.com/errors/bad-request",
+            instance=request.url.path,
+            request=request,
+        )
+    elif exc.status_code == 401:
+        return authentication_error_response(str(exc.detail), request)
+    elif exc.status_code == 403:
+        return authorization_error_response(str(exc.detail), request)
+    elif exc.status_code == 404:
+        return not_found_error_response("Resource", request)
+    elif exc.status_code == 409:
+        return problem_response(
+            status_code=409,
+            title="Conflict",
+            detail=str(exc.detail),
+            type_uri="https://api.wishlist.com/errors/conflict",
+            instance=request.url.path,
+            request=request,
+        )
+    else:
+        from app.api.error_handler import internal_error_response
+
+        return internal_error_response(
+            str(exc.detail), request, production_mode=settings.ENV == "production"
+        )
 
 
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    logger.error(
-        f"Unhandled exception: {exc}",
-        exc_info=True,
-        extra={"request_id": getattr(request.state, "request_id", "unknown")},
-    )
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "code": "INTERNAL_ERROR",
-            "message": "An internal error occurred",
-            "details": {},
-        },
-    )
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation errors with RFC 7807 format."""
+    errors = []
+    for error in exc.errors():
+        errors.append(
+            {
+                "field": " -> ".join(str(loc) for loc in error["loc"]),
+                "message": error["msg"],
+                "type": error["type"],
+            }
+        )
+    return validation_error_response(errors, request)
 
 
 @app.get("/health")

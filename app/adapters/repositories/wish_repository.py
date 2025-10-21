@@ -1,6 +1,8 @@
+import logging
 from typing import List, Optional
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities import Wish
@@ -10,6 +12,7 @@ from app.domain.models import WishCreate, WishUpdate
 class WishRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.logger = logging.getLogger(__name__)
 
     async def create(self, wish: WishCreate, owner_id: int) -> Wish:
         db_wish = Wish(**wish.model_dump(), owner_id=owner_id)
@@ -22,7 +25,12 @@ class WishRepository:
         query = select(Wish).where(Wish.id == wish_id)
         if owner_id is not None:
             query = query.where(Wish.owner_id == owner_id)
-        result = await self.db.execute(query)
+        try:
+            result = await self.db.execute(query)
+        except SQLAlchemyError as exc:
+            self.logger.error("Wish lookup failed: %s", exc)
+            await self.db.rollback()
+            return None
         return result.scalar_one_or_none()
 
     async def get_all(
@@ -34,7 +42,12 @@ class WishRepository:
             query = query.where(Wish.price_estimate <= price_filter)
 
         query = query.offset(offset).limit(limit)
-        result = await self.db.execute(query)
+        try:
+            result = await self.db.execute(query)
+        except SQLAlchemyError as exc:
+            self.logger.error("Wish listing failed: %s", exc)
+            await self.db.rollback()
+            return []
         return list(result.scalars().all())
 
     async def get_by_owner(
@@ -50,7 +63,12 @@ class WishRepository:
             query = query.where(Wish.price_estimate <= price_filter)
 
         query = query.offset(offset).limit(limit)
-        result = await self.db.execute(query)
+        try:
+            result = await self.db.execute(query)
+        except SQLAlchemyError as exc:
+            self.logger.error("Wish owner listing failed: %s", exc)
+            await self.db.rollback()
+            return []
         return list(result.scalars().all())
 
     async def update(
@@ -83,7 +101,12 @@ class WishRepository:
         if price_filter is not None:
             query = query.where(Wish.price_estimate <= price_filter)
 
-        result = await self.db.execute(query)
+        try:
+            result = await self.db.execute(query)
+        except SQLAlchemyError as exc:
+            self.logger.error("Wish count failed: %s", exc)
+            await self.db.rollback()
+            return 0
         return result.scalar_one()
 
     async def count_by_owner(self, owner_id: int, price_filter: Optional[float] = None) -> int:
@@ -92,5 +115,10 @@ class WishRepository:
         if price_filter is not None:
             query = query.where(Wish.price_estimate <= price_filter)
 
-        result = await self.db.execute(query)
+        try:
+            result = await self.db.execute(query)
+        except SQLAlchemyError as exc:
+            self.logger.error("Wish owner count failed: %s", exc)
+            await self.db.rollback()
+            return 0
         return result.scalar_one()
