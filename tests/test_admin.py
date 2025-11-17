@@ -170,3 +170,40 @@ async def test_admin_can_delete_any_wish(client, test_db):
         f"/api/v1/wishes/{wish_id}", headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert response.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_admin_user_listing_rejects_large_limit(client, test_db):
+    from app.adapters.database import get_db
+    from app.adapters.repositories.user_repository import UserRepository
+    from app.domain.entities import UserRole
+    from app.domain.models import UserCreate
+    from app.main import app
+    from app.services.auth_service import get_password_hash
+
+    async for db in app.dependency_overrides[get_db]():
+        repository = UserRepository(db)
+        user_data = UserCreate(
+            email="admin-limit@example.com",
+            username="admin_limit",
+            password="limit123",
+        )
+        await repository.create(user_data, get_password_hash("limit123"), role=UserRole.ADMIN)
+        break
+
+    response = await client.post(
+        "/api/v1/auth/login",
+        data={"username": "admin-limit@example.com", "password": "limit123"},
+    )
+    admin_token = response.json()["access_token"]
+
+    response = await client.get(
+        "/api/v1/admin/users",
+        params={"limit": 500},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["type"] == "https://api.wishlist.com/errors/validation-error"
+    assert "validation_errors" in body

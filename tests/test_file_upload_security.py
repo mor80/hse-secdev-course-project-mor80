@@ -6,6 +6,7 @@ from fastapi import status
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services import file_service
 from app.services.file_service import (
     secure_save,
     sniff_image_type,
@@ -85,6 +86,14 @@ class TestFileUploadSecurity:
         assert is_valid
         assert error == ""
 
+    def test_file_type_validation_disallowed_type(self):
+        """Test file type validation when MIME type is blocked."""
+        png_data = b"\x89PNG\r\n\x1a\n" + b"fake_data"
+        with patch("app.services.file_service.ALLOWED_TYPES", {"image/jpeg"}):
+            is_valid, error = validate_file_type(png_data)
+            assert not is_valid
+            assert "not allowed" in error.lower()
+
     def test_file_type_validation_negative(self):
         """Test file type validation with invalid type."""
         # Invalid file type
@@ -151,8 +160,10 @@ class TestFileUploadSecurity:
             # Should still succeed but with secure filename
             assert success
             assert saved_path is not None
-            # Saved path should be within temp_dir
-            assert str(Path(saved_path)).startswith(temp_dir)
+            # Saved path should be within temp_dir (handle /private prefix on macOS)
+            saved_resolved = Path(saved_path).resolve()
+            base_resolved = Path(temp_dir).resolve()
+            assert saved_resolved.is_relative_to(base_resolved)
 
     def test_secure_save_uuid_filename(self):
         """Test that saved files use UUID filenames."""
@@ -257,3 +268,27 @@ class TestFileUploadSecurity:
                 mock_save.assert_called_once()
                 call_args = mock_save.call_args
                 assert "passwd" in call_args[1]["filename_hint"]  # Original filename passed
+
+    def test_get_file_info_and_delete_flow(self):
+        """Ensure file info retrieval and deletion stay sandboxed."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            png_data = b"\x89PNG\r\n\x1a\n" + b"payload"
+            success, _, saved_path = secure_save(
+                base_dir=temp_dir, filename_hint="info.png", data=png_data
+            )
+            assert success and saved_path
+
+            with patch("app.services.file_service.UPLOAD_DIR", temp_dir):
+                metadata = file_service.get_file_info(saved_path)
+                assert metadata is not None
+                assert metadata["filename"].endswith(".png")
+                assert file_service.delete_file(saved_path) is True
+                assert file_service.get_file_info(saved_path) is None
+
+    def test_ensure_upload_directory_creates_hardened_path(self):
+        """Ensure upload directories are created with restricted permissions."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            target_dir = Path(temp_dir) / "nested" / "uploads"
+            with patch("app.services.file_service.UPLOAD_DIR", str(target_dir)):
+                assert file_service.ensure_upload_directory() is True
+                assert target_dir.exists()

@@ -67,3 +67,13 @@ async def test_validation_error_short_password(client):
     assert "correlation_id" in body
     assert "validation_errors" in body
     assert body["type"] == "https://api.wishlist.com/errors/validation-error"
+
+
+def test_domain_exceptions_inherit_from_base():
+    from app.domain import exceptions
+
+    assert issubclass(exceptions.AuthenticationError, exceptions.WishlistException)
+    assert issubclass(exceptions.AuthorizationError, exceptions.WishlistException)
+    assert issubclass(exceptions.ValidationError, exceptions.WishlistException)
+    assert issubclass(exceptions.NotFoundError, exceptions.WishlistException)
+    assert issubclass(exceptions.DuplicateError, exceptions.WishlistException)
