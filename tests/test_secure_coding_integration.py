@@ -110,7 +110,7 @@ class TestSecureCodingIntegration:
             assert success
             assert saved_path is not None
 
-            # Verify path is within temp_dir
+            # Verify path is within temp_dir (handle /private prefix on macOS)
             saved_resolved = Path(saved_path).resolve()
             base_resolved = Path(temp_dir).resolve()
             assert saved_resolved.is_relative_to(base_resolved)

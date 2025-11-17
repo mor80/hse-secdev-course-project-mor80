@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 MAX_FILE_SIZE = 5_000_000  # 5MB
 ALLOWED_TYPES = {"image/png", "image/jpeg"}
 DEFAULT_UPLOAD_DIR = Path(tempfile.gettempdir()) / "wishlist_secure_uploads"
-UPLOAD_DIR = os.getenv("UPLOAD_DIR") or str(DEFAULT_UPLOAD_DIR)
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", str(DEFAULT_UPLOAD_DIR))
 
 # Magic bytes for file type detection
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
