@@ -1,6 +1,25 @@
 import pytest
 
 
+async def _register_and_login(client, email: str, username: str, password: str) -> str:
+    register_response = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": email,
+            "username": username,
+            "password": password,
+        },
+    )
+    assert register_response.status_code == 201
+
+    login_response = await client.post(
+        "/api/v1/auth/login",
+        data={"username": email, "password": password},
+    )
+    assert login_response.status_code == 200
+    return login_response.json()["access_token"]
+
+
 @pytest.mark.asyncio
 async def test_register_user(client):
     response = await client.post(
@@ -144,3 +163,39 @@ async def test_owner_only_access(client):
         f"/api/v1/wishes/{wish_id}", headers={"Authorization": f"Bearer {token2}"}
     )
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_wish_creation_rejects_html_payload(client):
+    token = await _register_and_login(
+        client, email="security1@example.com", username="security1", password="password123"
+    )
+
+    response = await client.post(
+        "/api/v1/wishes/",
+        json={"title": "<script>alert(1)</script>", "notes": "legit", "link": "https://safe.com"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["type"] == "https://api.wishlist.com/errors/validation-error"
+    assert any("title" in err["field"].lower() for err in body["validation_errors"])
+
+
+@pytest.mark.asyncio
+async def test_wish_creation_rejects_insecure_link(client):
+    token = await _register_and_login(
+        client, email="security2@example.com", username="security2", password="password123"
+    )
+
+    response = await client.post(
+        "/api/v1/wishes/",
+        json={"title": "Gift", "link": "ftp://example.com/file", "notes": "bad protocol"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["type"] == "https://api.wishlist.com/errors/validation-error"
+    assert any("link" in err["field"].lower() for err in body["validation_errors"])

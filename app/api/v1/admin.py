@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +16,9 @@ router = APIRouter()
 async def get_all_users(
     current_admin: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_db),
+    limit: int = Query(50, ge=1, le=100, description="Maximum number of users to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
 ):
-    result = await db.execute(select(User))
+    result = await db.execute(select(User).order_by(User.id).offset(offset).limit(limit))
     users = result.scalars().all()
     return users

@@ -52,13 +52,14 @@ dev:
 
 test:
 	@echo "🧪 Running tests..."
-	pytest -v --cov=app tests/
+	pytest
 
 lint:
 	@echo "🔍 Running linters..."
 	ruff check .
 	black --check .
 	isort --check-only .
+	bandit -q -r app
 
 format:
 	@echo "✨ Formatting code..."
