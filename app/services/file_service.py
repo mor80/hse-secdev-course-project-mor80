@@ -1,5 +1,6 @@
 import logging
 import os
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Optional, Tuple
@@ -9,7 +10,8 @@ logger = logging.getLogger(__name__)
 # Security constants
 MAX_FILE_SIZE = 5_000_000  # 5MB
 ALLOWED_TYPES = {"image/png", "image/jpeg"}
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/tmp/uploads")
+DEFAULT_UPLOAD_DIR = Path(tempfile.gettempdir()) / "wishlist_secure_uploads"
+UPLOAD_DIR = os.getenv("UPLOAD_DIR") or str(DEFAULT_UPLOAD_DIR)
 
 # Magic bytes for file type detection
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"

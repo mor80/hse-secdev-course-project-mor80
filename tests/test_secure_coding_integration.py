@@ -1,8 +1,3 @@
-"""
-Integration tests for secure coding implementation.
-Tests the interaction between RFC 7807, file upload security, and secrets management.
-"""
-
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -116,7 +111,9 @@ class TestSecureCodingIntegration:
             assert saved_path is not None
 
             # Verify path is within temp_dir
-            assert str(Path(saved_path)).startswith(temp_dir)
+            saved_resolved = Path(saved_path).resolve()
+            base_resolved = Path(temp_dir).resolve()
+            assert saved_resolved.is_relative_to(base_resolved)
 
             # Verify filename is UUID-based
             filename = Path(saved_path).name

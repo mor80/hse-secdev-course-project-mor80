@@ -152,7 +152,9 @@ class TestFileUploadSecurity:
             assert success
             assert saved_path is not None
             # Saved path should be within temp_dir
-            assert str(Path(saved_path)).startswith(temp_dir)
+            saved_resolved = Path(saved_path).resolve()
+            base_resolved = Path(temp_dir).resolve()
+            assert saved_resolved.is_relative_to(base_resolved)
 
     def test_secure_save_uuid_filename(self):
         """Test that saved files use UUID filenames."""

@@ -11,13 +11,17 @@ logger = logging.getLogger(__name__)
 SECRET_KEY_MIN_LENGTH = 32
 SECRET_KEY_MAX_LENGTH = 128
 ROTATION_INTERVAL_DAYS = 30
-MASKED_SECRET = "***REDACTED***"
+MASKED_SECRET = "***REDACTED***"  # nosec B105 - placeholder for logging
 URL_SAFE_ALPHABET = string.ascii_letters + string.digits + "-_"
 
+JWT_SECRET_TYPE = "jwt_key"  # nosec B105 - identifier only
+DB_PASSWORD_SECRET_TYPE = "db_password"  # nosec B105 - identifier only
+GENERAL_SECRET_TYPE = "general"  # nosec B105 (logical default bucket)
+
 SECRET_RULES: Dict[str, Tuple[int, int]] = {
-    "jwt_key": (32, SECRET_KEY_MAX_LENGTH),
-    "db_password": (12, SECRET_KEY_MAX_LENGTH),
-    "general": (SECRET_KEY_MIN_LENGTH, SECRET_KEY_MAX_LENGTH),
+    JWT_SECRET_TYPE: (32, SECRET_KEY_MAX_LENGTH),
+    DB_PASSWORD_SECRET_TYPE: (12, SECRET_KEY_MAX_LENGTH),
+    GENERAL_SECRET_TYPE: (SECRET_KEY_MIN_LENGTH, SECRET_KEY_MAX_LENGTH),
 }
 
 
@@ -39,7 +43,9 @@ STRONG_PASSWORD_PATTERN = re.compile(
 )
 
 
-def validate_secret_strength(secret: str, secret_type: str = "general") -> Tuple[bool, str]:
+def validate_secret_strength(
+    secret: str, secret_type: str = GENERAL_SECRET_TYPE
+) -> Tuple[bool, str]:
     """
     Validate secret strength based on type.
 
@@ -53,15 +59,15 @@ def validate_secret_strength(secret: str, secret_type: str = "general") -> Tuple
     if not secret:
         return False, "Secret cannot be empty"
 
-    min_length, max_length = SECRET_RULES.get(secret_type, SECRET_RULES["general"])
+    min_length, max_length = SECRET_RULES.get(secret_type, SECRET_RULES[GENERAL_SECRET_TYPE])
 
     if len(secret) < min_length:
-        if secret_type == "jwt_key" and len(secret) >= 29:
+        if secret_type == JWT_SECRET_TYPE and len(secret) >= 29:
             min_length = len(secret)
         else:
-            if secret_type == "jwt_key":
+            if secret_type == JWT_SECRET_TYPE:
                 return False, f"JWT key must be at least {min_length} characters"
-            if secret_type == "db_password":
+            if secret_type == DB_PASSWORD_SECRET_TYPE:
                 return False, f"Database password must be at least {min_length} characters"
             return False, f"Secret too short. Minimum length: {min_length}"
 
@@ -69,9 +75,9 @@ def validate_secret_strength(secret: str, secret_type: str = "general") -> Tuple
         return False, f"Secret too long. Maximum length: {max_length}"
 
     # Type-specific validation
-    if secret_type == "jwt_key":
+    if secret_type == JWT_SECRET_TYPE:
         return _validate_jwt_key(secret)
-    if secret_type == "db_password":
+    if secret_type == DB_PASSWORD_SECRET_TYPE:
         return _validate_db_password(secret)
     return _validate_general_secret(secret)
 
@@ -108,7 +114,7 @@ def _generate_urlsafe_secret(length: int, min_length: int, max_length: int) -> s
     return "".join(secrets.choice(URL_SAFE_ALPHABET) for _ in range(target_length))
 
 
-def generate_secure_secret(length: int = 32, secret_type: str = "general") -> str:
+def generate_secure_secret(length: int = 32, secret_type: str = GENERAL_SECRET_TYPE) -> str:
     """
     Generate a cryptographically secure secret.
 
@@ -119,16 +125,16 @@ def generate_secure_secret(length: int = 32, secret_type: str = "general") -> st
     Returns:
         Generated secret
     """
-    if secret_type == "jwt_key":
-        min_length, max_length = SECRET_RULES["jwt_key"]
+    if secret_type == JWT_SECRET_TYPE:
+        min_length, max_length = SECRET_RULES[JWT_SECRET_TYPE]
         return _generate_urlsafe_secret(length, min_length, max_length)
 
-    if secret_type == "db_password":
+    if secret_type == DB_PASSWORD_SECRET_TYPE:
         # Database passwords should be complex
         return _generate_complex_password(length)
 
     # General secrets default to URL-safe tokens, respecting requested length
-    _, max_length = SECRET_RULES["general"]
+    _, max_length = SECRET_RULES[GENERAL_SECRET_TYPE]
     return _generate_urlsafe_secret(length, 1, max_length)
 
 
@@ -214,7 +220,7 @@ def validate_environment_secrets() -> Tuple[bool, List[str]]:
 
     # Validate SECRET_KEY
     if hasattr(settings, "SECRET_KEY"):
-        is_valid, error = validate_secret_strength(settings.SECRET_KEY, "jwt_key")
+        is_valid, error = validate_secret_strength(settings.SECRET_KEY, JWT_SECRET_TYPE)
         if not is_valid:
             errors.append(f"SECRET_KEY: {error}")
 
@@ -225,7 +231,7 @@ def validate_environment_secrets() -> Tuple[bool, List[str]]:
         password_match = re.search(r"://[^:]+:([^@]+)@", db_url)
         if password_match:
             password = password_match.group(1)
-            is_valid, error = validate_secret_strength(password, "db_password")
+            is_valid, error = validate_secret_strength(password, DB_PASSWORD_SECRET_TYPE)
             if not is_valid:
                 errors.append(f"DATABASE_PASSWORD: {error}")
 
@@ -260,8 +266,8 @@ def rotate_secret(secret_type: str) -> Tuple[bool, str, Optional[str]]:
         (success, message, new_secret)
     """
     try:
-        if secret_type == "jwt_key":
-            new_secret = generate_secure_secret(64, "jwt_key")
+        if secret_type == JWT_SECRET_TYPE:
+            new_secret = generate_secure_secret(64, JWT_SECRET_TYPE)
             # TODO: Implement actual rotation logic
             # This would involve updating the secret store
             # and handling graceful transition for existing tokens
@@ -269,8 +275,8 @@ def rotate_secret(secret_type: str) -> Tuple[bool, str, Optional[str]]:
             logger.info("JWT secret rotation initiated")
             return True, "JWT secret rotation initiated", new_secret
 
-        elif secret_type == "db_password":
-            new_secret = generate_secure_secret(16, "db_password")
+        elif secret_type == DB_PASSWORD_SECRET_TYPE:
+            new_secret = generate_secure_secret(16, DB_PASSWORD_SECRET_TYPE)
             # TODO: Implement database password rotation
             # This would involve updating the database user password
             # and updating the connection string

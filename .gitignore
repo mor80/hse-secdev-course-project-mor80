@@ -25,3 +25,4 @@ package-lock.json
 
 # Ruff cache
 .ruff_cache/
+.trivy-cache/
