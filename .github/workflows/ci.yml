@@ -42,7 +42,7 @@ jobs:
         run: docker build --target runtime -t wishlist-api:ci .
 
       - name: Trivy image scan
-        uses: aquasec/trivy-action@0.21.1
+        uses: aquasecurity/trivy-action@0.21.1
         with:
           image-ref: wishlist-api:ci
           trivy-config: trivy.yaml
