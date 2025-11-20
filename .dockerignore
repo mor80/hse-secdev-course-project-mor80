@@ -27,4 +27,4 @@ Makefile
 SECURITY.md
 README.md
 *Dockerfile.local
- .trivy-cache/
+.trivy-cache/

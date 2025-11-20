@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   db:
     image: postgres:15.7-alpine
@@ -37,6 +39,8 @@ services:
       start_period: 40s
     security_opt:
       - no-new-privileges:true
+      - seccomp=./docker/seccomp-profile.json
+      - apparmor=docker-default
     cap_drop:
       - ALL
     read_only: true

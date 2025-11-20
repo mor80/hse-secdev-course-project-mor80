@@ -1,0 +1,11 @@
+failure-threshold: warning
+format: tty
+ignored:
+  - DL3008
+  - DL3018
+overrides:
+  error:
+    - DL3002
+    - DL3020
+trustedRegistries:
+  - docker.io
