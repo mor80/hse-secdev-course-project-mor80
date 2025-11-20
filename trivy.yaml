@@ -1,7 +1,3 @@
-cache:
-  backend: filesystem
-  dir: .trivy-cache
-  ttl: 48h
 format: table
 ignore-unfixed: true
 scan:
