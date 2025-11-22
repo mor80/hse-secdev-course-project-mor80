@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15.7-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-wishlist_db}
+      POSTGRES_USER: ${DB_USER:-wishlist_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-wishlist_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${DB_NAME:-wishlist_db} -U ${DB_USER:-wishlist_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wishlist
+
+  api:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./docker/seccomp-profile.json
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    user: "${APP_UID:-1001}:${APP_GID:-1001}"
+    networks:
+      - wishlist
+
+volumes:
+  postgres_data:
+
+networks:
+  wishlist:
+    driver: bridge

@@ -1,11 +1,21 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "Waiting for PostgreSQL..."
-while ! pg_isready -h db -p 5432 -U wishlist_user > /dev/null 2>&1; do
-    sleep 1
-done
-echo "PostgreSQL is ready!"
+DB_HOST="${DB_HOST:-db}"
+DB_PORT="${DB_PORT:-5432}"
+DB_USER="${DB_USER:-wishlist_user}"
+DB_NAME="${DB_NAME:-wishlist_db}"
+SKIP_DB_WAIT="${SKIP_DB_WAIT:-false}"
+
+if [[ "${SKIP_DB_WAIT}" != "true" ]]; then
+    echo "Waiting for PostgreSQL at ${DB_HOST}:${DB_PORT}/${DB_NAME}..."
+    until pg_isready -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" >/dev/null 2>&1; do
+        sleep 1
+    done
+    echo "PostgreSQL is ready!"
+else
+    echo "Skipping database availability check."
+fi
 
 echo "Running database migrations..."
 alembic upgrade head

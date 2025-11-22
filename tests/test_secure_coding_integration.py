@@ -1,8 +1,3 @@
-"""
-Integration tests for secure coding implementation.
-Tests the interaction between RFC 7807, file upload security, and secrets management.
-"""
-
 import tempfile
 from pathlib import Path
 from unittest.mock import patch

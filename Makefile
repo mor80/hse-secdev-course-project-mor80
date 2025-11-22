@@ -1,4 +1,4 @@
-.PHONY: help setup install dev test lint format clean docker-up docker-down docker-logs db-upgrade db-migrate create-admin
+.PHONY: help setup install dev test lint format clean docker-up docker-down docker-logs docker-build docker-hadolint docker-trivy docker-health db-upgrade db-migrate create-admin
 
 help:
 	@echo "Wishlist API - Makefile commands"
@@ -78,6 +78,25 @@ docker-down:
 docker-logs:
 	@echo "📋 Showing Docker logs..."
 	docker compose logs -f
+
+docker-build:
+	@echo "🏗️  Building production image..."
+	docker build --target runtime -t wishlist-api:local .
+
+docker-hadolint:
+	@echo "🔍 Running Hadolint..."
+	docker run --rm -i hadolint/hadolint:2.12.0 < Dockerfile
+
+docker-trivy: docker-build
+	@echo "🛡️  Running Trivy scan..."
+	docker run --rm \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v $$(pwd)/.trivy-cache:/root/.cache/ \
+		aquasec/trivy:0.53.0 image --exit-code 1 --severity HIGH,CRITICAL wishlist-api:local
+
+docker-health:
+	@echo "🩺 Checking container health..."
+	docker compose ps
 
 docker-test:
 	@echo "🧪 Running tests in Docker..."

@@ -1,0 +1,12 @@
+format: table
+ignore-unfixed: true
+scan:
+  scanners:
+    - vuln
+vulnerability:
+  type:
+    - os
+    - library
+  severity:
+    - CRITICAL
+    - HIGH

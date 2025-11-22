@@ -17,6 +17,10 @@ JWT_TYPE_NAME = "jwt_key"  # identifier for JWT secret category
 DB_PASSWORD_TYPE_NAME = "db_password"  # nosec B105 - identifier for DB password category
 GENERAL_TYPE_NAME = "general"  # default secret classification
 
+JWT_SECRET_TYPE = "jwt_key"  # nosec B105 - identifier only
+DB_PASSWORD_SECRET_TYPE = "db_password"  # nosec B105 - identifier only
+GENERAL_SECRET_TYPE = "general"  # nosec B105 (logical default bucket)
+
 SECRET_RULES: Dict[str, Tuple[int, int]] = {
     JWT_TYPE_NAME: (32, SECRET_KEY_MAX_LENGTH),
     DB_PASSWORD_TYPE_NAME: (12, SECRET_KEY_MAX_LENGTH),
