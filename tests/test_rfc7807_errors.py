@@ -80,8 +80,8 @@ class TestRFC7807ErrorHandling:
         assert "correlation_id" in data
 
         # Verify error type
-        assert data["type"] == "https://api.wishlist.com/errors/authz-error"
-        assert data["title"] == "Authorization Error"
+        assert data["type"] == "https://api.wishlist.com/errors/auth-error"
+        assert data["title"] == "Authentication Error"
         assert data["status"] == 401
 
     def test_not_found_error_rfc7807_format(self):
