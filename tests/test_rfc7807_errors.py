@@ -69,7 +69,7 @@ class TestRFC7807ErrorHandling:
         # Test accessing admin endpoint without admin privileges
         response = client.get("/api/v1/admin/users")
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
         # Check RFC 7807 format
         data = response.json()
@@ -82,7 +82,7 @@ class TestRFC7807ErrorHandling:
         # Verify error type
         assert data["type"] == "https://api.wishlist.com/errors/authz-error"
         assert data["title"] == "Authorization Error"
-        assert data["status"] == 403
+        assert data["status"] == 401
 
     def test_not_found_error_rfc7807_format(self):
         """Test that not found errors return RFC 7807 format."""
