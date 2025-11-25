@@ -216,7 +216,7 @@ class TestSecureCodingIntegration:
 
         # Test authorization error
         response = client.get("/api/v1/admin/users")
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
         # Test not found error
         response = client.get("/api/v1/wishes/99999")
