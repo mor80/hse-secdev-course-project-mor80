@@ -1,5 +1,7 @@
 # Wishlist - HSE SecDev 2025
 
+[![CI](https://github.com/mor80/hse-secdev-course-project-mor80/actions/workflows/ci.yml/badge.svg)](https://github.com/mor80/hse-secdev-course-project-mor80/actions/workflows/ci.yml)
+
 Full-stack Wishlist приложение с безопасным API и современным React фронтендом.
 
 ## Особенности

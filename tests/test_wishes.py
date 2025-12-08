@@ -117,7 +117,7 @@ async def test_get_wishes(client):
 async def test_unauthorized_access(client):
     response = await client.get("/api/v1/wishes/")
     # FastAPI HTTPBearer returns 403 when no credentials provided
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
