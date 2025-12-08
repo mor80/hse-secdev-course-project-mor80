@@ -1,0 +1,19 @@
+rules:
+  - id: wishlist-shell-true
+    languages: [python]
+    severity: WARNING
+    message: "Avoid shell=True when invoking subprocesses"
+    pattern: subprocess.Popen(..., shell=True, ...)
+    metadata:
+      category: security
+      cwe: CWE-78
+      references:
+        - https://docs.python.org/3/library/subprocess.html#security-considerations
+  - id: wishlist-fastapi-debug
+    languages: [python]
+    severity: INFO
+    message: "FastAPI app should not run with debug=True in production code"
+    pattern: "FastAPI(…, debug=True, …)"
+    metadata:
+      category: configuration
+      cwe: CWE-489

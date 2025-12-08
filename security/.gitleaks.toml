@@ -1,0 +1,13 @@
+title = "Wishlist P10 Gitleaks"
+
+[allowlist]
+  description = "Allow known test credentials and documentation files"
+  regexes = [
+    '''SECRET_KEY=change-me.*''',
+    '''PGADMIN_DEFAULT_PASSWORD''',
+    '''VITE_API_URL=.*'''
+  ]
+  paths = [
+    'docs/.*',
+    'EVIDENCE/.*'
+  ]
