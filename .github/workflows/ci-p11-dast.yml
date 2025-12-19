@@ -1,0 +1,81 @@
+name: P11 - DAST (ZAP baseline)
+
+on:
+  push:
+    paths:
+      - 'app/**'
+      - '.github/workflows/ci-p11-dast.yml'
+      - 'requirements*.txt'
+      - 'pyproject.toml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - '.github/workflows/ci-p11-dast.yml'
+      - 'requirements*.txt'
+      - 'pyproject.toml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p11-dast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run app
+        run: |
+          uvicorn app.main:app --host 0.0.0.0 --port 8080 &
+          echo $! > /tmp/uvicorn.pid
+
+      - name: Wait for health
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://localhost:8080/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Service did not become healthy"
+          exit 1
+
+      - name: ZAP baseline scan
+        continue-on-error: true
+        run: |
+          mkdir -p EVIDENCE/P11
+          docker run --rm --network host -v "$PWD:/zap/wrk" \
+            owasp/zap2docker-stable \
+            zap-baseline.py -t http://localhost:8080 \
+              -r EVIDENCE/P11/zap_baseline.html \
+              -J EVIDENCE/P11/zap_baseline.json || true
+
+      - name: Stop app
+        if: always()
+        run: |
+          if [ -f /tmp/uvicorn.pid ]; then
+            kill "$(cat /tmp/uvicorn.pid)" || true
+          fi
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: P11_EVIDENCE
+          path: EVIDENCE/P11
+          retention-days: 30
