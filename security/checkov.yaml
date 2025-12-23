@@ -1,0 +1,7 @@
+framework:
+  - dockerfile
+  - docker_compose
+quiet: true
+compact: true
+skip-check:
+  - CKV_DOCKER_2  # healthcheck handled in runtime image

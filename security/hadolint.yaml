@@ -1,0 +1,8 @@
+failure-threshold: warning
+format: json
+ignored:
+  - DL3008  # allow combined apt installs with cleanup
+  - DL3018  # pip install handled via requirements files
+  - DL3013  # versions pinned in requirements files
+trustedRegistries:
+  - docker.io
