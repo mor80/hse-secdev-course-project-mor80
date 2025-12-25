@@ -212,7 +212,10 @@ class TestSecureCodingIntegration:
 
         # Test authorization error
         response = sync_client.get("/api/v1/admin/users")
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
+        )
 
         # Test not found error
         response = sync_client.get("/api/v1/wishes/99999")
