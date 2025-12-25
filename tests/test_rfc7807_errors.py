@@ -1,18 +1,13 @@
 from fastapi import status
-from fastapi.testclient import TestClient
-
-from app.main import app
-
-client = TestClient(app)
 
 
 class TestRFC7807ErrorHandling:
     """Test RFC 7807 Problem Details error handling."""
 
-    def test_validation_error_rfc7807_format(self):
+    def test_validation_error_rfc7807_format(self, sync_client):
         """Test that validation errors return RFC 7807 format."""
         # Test with invalid email format
-        response = client.post(
+        response = sync_client.post(
             "/api/v1/auth/register",
             json={
                 "email": "invalid-email",  # Invalid email format
@@ -42,10 +37,10 @@ class TestRFC7807ErrorHandling:
         assert data["title"] == "Validation Error"
         assert data["status"] == 422
 
-    def test_authentication_error_rfc7807_format(self):
+    def test_authentication_error_rfc7807_format(self, sync_client):
         """Test that authentication errors return RFC 7807 format."""
         # Test with invalid credentials
-        response = client.post(
+        response = sync_client.post(
             "/api/v1/auth/login", json={"username": "nonexistent", "password": "wrongpassword"}
         )
 
@@ -64,12 +59,12 @@ class TestRFC7807ErrorHandling:
         assert data["title"] == "Authentication Error"
         assert data["status"] == 401
 
-    def test_authorization_error_rfc7807_format(self):
+    def test_authorization_error_rfc7807_format(self, sync_client):
         """Test that authorization errors return RFC 7807 format."""
         # Test accessing admin endpoint without admin privileges
-        response = client.get("/api/v1/admin/users")
+        response = sync_client.get("/api/v1/admin/users")
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
         # Check RFC 7807 format
         data = response.json()
@@ -80,14 +75,14 @@ class TestRFC7807ErrorHandling:
         assert "correlation_id" in data
 
         # Verify error type
-        assert data["type"] == "https://api.wishlist.com/errors/auth-error"
-        assert data["title"] == "Authentication Error"
-        assert data["status"] == 401
+        assert data["type"] == "https://api.wishlist.com/errors/authz-error"
+        assert data["title"] == "Authorization Error"
+        assert data["status"] == 403
 
-    def test_not_found_error_rfc7807_format(self):
+    def test_not_found_error_rfc7807_format(self, sync_client):
         """Test that not found errors return RFC 7807 format."""
         # Test accessing non-existent wish
-        response = client.get("/api/v1/wishes/99999")
+        response = sync_client.get("/api/v1/wishes/99999")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -104,12 +99,12 @@ class TestRFC7807ErrorHandling:
         assert data["title"] == "Not Found"
         assert data["status"] == 404
 
-    def test_correlation_id_uniqueness(self):
+    def test_correlation_id_uniqueness(self, sync_client):
         """Test that correlation IDs are unique across requests."""
         # Make multiple requests
         responses = []
         for _ in range(5):
-            response = client.post(
+            response = sync_client.post(
                 "/api/v1/auth/register",
                 json={"email": "invalid", "username": "test", "password": "short"},
             )
@@ -121,11 +116,11 @@ class TestRFC7807ErrorHandling:
         # All should be unique
         assert len(set(correlation_ids)) == len(correlation_ids)
 
-    def test_production_error_masking(self):
+    def test_production_error_masking(self, sync_client):
         """Test that production mode masks sensitive error details."""
         # This test would require setting ENV=production
         # For now, test that the structure is correct
-        response = client.get("/api/v1/wishes/99999")
+        response = sync_client.get("/api/v1/wishes/99999")
 
         data = response.json()
         # In production, detail should be masked
@@ -133,11 +128,11 @@ class TestRFC7807ErrorHandling:
         assert "detail" in data
         assert isinstance(data["detail"], str)
 
-    def test_error_logging_with_correlation_id(self):
+    def test_error_logging_with_correlation_id(self, sync_client):
         """Test that errors are logged with correlation ID."""
         # This test would require capturing logs
         # For now, just verify the error response structure
-        response = client.post(
+        response = sync_client.post(
             "/api/v1/auth/register",
             json={"email": "invalid", "username": "test", "password": "short"},
         )
@@ -149,9 +144,9 @@ class TestRFC7807ErrorHandling:
         assert len(correlation_id) == 36
         assert correlation_id.count("-") == 4
 
-    def test_validation_error_details(self):
+    def test_validation_error_details(self, sync_client):
         """Test that validation errors include detailed field information."""
-        response = client.post(
+        response = sync_client.post(
             "/api/v1/auth/register",
             json={
                 "email": "invalid-email",
@@ -172,11 +167,11 @@ class TestRFC7807ErrorHandling:
             assert "message" in error
             assert "type" in error
 
-    def test_http_exception_conversion(self):
+    def test_http_exception_conversion(self, sync_client):
         """Test that HTTP exceptions are converted to RFC 7807 format."""
         # Test with a 500 error (this would require triggering an internal error)
         # For now, test with a known endpoint that might return HTTP errors
-        response = client.get("/api/v1/wishes/")
+        response = sync_client.get("/api/v1/wishes/")
 
         # Should return 403 (no auth) in RFC 7807 format
         if response.status_code == 403:

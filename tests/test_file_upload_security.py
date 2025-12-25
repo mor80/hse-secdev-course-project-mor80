@@ -3,9 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from fastapi import status
-from fastapi.testclient import TestClient
 
-from app.main import app
 from app.services import file_service
 from app.services.file_service import (
     secure_save,
@@ -13,8 +11,6 @@ from app.services.file_service import (
     validate_file_size,
     validate_file_type,
 )
-
-client = TestClient(app)
 
 
 class TestFileUploadSecurity:
@@ -182,18 +178,18 @@ class TestFileUploadSecurity:
             assert len(name_part) == 36  # UUID length
             assert name_part.count("-") == 4  # UUID format
 
-    def test_upload_endpoint_authentication_required(self):
+    def test_upload_endpoint_authentication_required(self, sync_client):
         """Test that upload endpoint requires authentication."""
         # Create a fake file
         files = {"file": ("test.png", b"fake_image_data", "image/png")}
 
-        response = client.post("/api/v1/upload/avatar", files=files)
+        response = sync_client.post("/api/v1/upload/avatar", files=files)
 
         # Should require authentication
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @patch("app.services.file_service.ensure_upload_directory")
-    def test_upload_endpoint_validation_error(self, mock_ensure_dir):
+    def test_upload_endpoint_validation_error(self, mock_ensure_dir, sync_client):
         """Test upload endpoint with validation error."""
         mock_ensure_dir.return_value = True
 
@@ -207,7 +203,7 @@ class TestFileUploadSecurity:
             mock_user = User(id=1, email="test@example.com", username="test", role=UserRole.USER)
             mock_auth.return_value = mock_user
 
-            response = client.post("/api/v1/upload/avatar", files=files)
+            response = sync_client.post("/api/v1/upload/avatar", files=files)
 
             # Should return validation error in RFC 7807 format
             assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -219,7 +215,7 @@ class TestFileUploadSecurity:
             assert "detail" in data
             assert "correlation_id" in data
 
-    def test_upload_endpoint_oversized_file(self):
+    def test_upload_endpoint_oversized_file(self, sync_client):
         """Test upload endpoint with oversized file."""
         # Create a large file (6MB)
         large_data = b"x" * (6 * 1024 * 1024)
@@ -232,7 +228,7 @@ class TestFileUploadSecurity:
             mock_user = User(id=1, email="test@example.com", username="test", role=UserRole.USER)
             mock_auth.return_value = mock_user
 
-            response = client.post("/api/v1/upload/avatar", files=files)
+            response = sync_client.post("/api/v1/upload/avatar", files=files)
 
             # Should return validation error
             assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -243,7 +239,7 @@ class TestFileUploadSecurity:
             validation_errors = data["validation_errors"]
             assert any("too large" in error["message"].lower() for error in validation_errors)
 
-    def test_upload_endpoint_malicious_filename(self):
+    def test_upload_endpoint_malicious_filename(self, sync_client):
         """Test upload endpoint with malicious filename."""
         # Create valid PNG data but with malicious filename
         png_data = b"\x89PNG\r\n\x1a\n" + b"fake_data"
@@ -259,7 +255,7 @@ class TestFileUploadSecurity:
             with patch("app.services.file_service.secure_save") as mock_save:
                 mock_save.return_value = (True, "", "/secure/path/file.png")
 
-                response = client.post("/api/v1/upload/avatar", files=files)
+                response = sync_client.post("/api/v1/upload/avatar", files=files)
 
                 # Should succeed but with secure filename
                 assert response.status_code == status.HTTP_200_OK

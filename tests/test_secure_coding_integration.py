@@ -3,13 +3,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from fastapi import status
-from fastapi.testclient import TestClient
 
-from app.main import app
 from app.services.file_service import secure_save
 from app.services.secrets_service import validate_secret_strength
-
-client = TestClient(app)
 
 
 class TestSecureCodingIntegration:
@@ -53,7 +49,7 @@ class TestSecureCodingIntegration:
             assert "unsupported" in error.lower()
             assert saved_path is None
 
-    def test_rfc7807_with_file_upload_endpoint(self):
+    def test_rfc7807_with_file_upload_endpoint(self, sync_client):
         """Test RFC 7807 error handling in file upload endpoint."""
         # Create malicious file
         files = {"file": ("malicious.txt", b"not_an_image", "text/plain")}
@@ -68,7 +64,7 @@ class TestSecureCodingIntegration:
             with patch("app.services.file_service.ensure_upload_directory") as mock_ensure:
                 mock_ensure.return_value = True
 
-                response = client.post("/api/v1/upload/avatar", files=files)
+                response = sync_client.post("/api/v1/upload/avatar", files=files)
 
                 # Should return RFC 7807 error
                 assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -120,10 +116,10 @@ class TestSecureCodingIntegration:
             name_part = filename.split(".")[0]
             assert len(name_part) == 36  # UUID length
 
-    def test_error_correlation_across_components(self):
+    def test_error_correlation_across_components(self, sync_client):
         """Test that correlation IDs are consistent across components."""
         # Test validation error
-        response = client.post(
+        response = sync_client.post(
             "/api/v1/auth/register",
             json={"email": "invalid", "username": "test", "password": "short"},
         )
@@ -137,12 +133,12 @@ class TestSecureCodingIntegration:
         assert len(correlation_id) == 36
         assert correlation_id.count("-") == 4
 
-    def test_production_error_masking(self):
+    def test_production_error_masking(self, sync_client):
         """Test that production mode masks sensitive information."""
         # This test would require setting ENV=production
         # For now, test the structure
 
-        response = client.get("/api/v1/wishes/99999")
+        response = sync_client.get("/api/v1/wishes/99999")
 
         data = response.json()
         assert "detail" in data
@@ -189,40 +185,40 @@ class TestSecureCodingIntegration:
             assert not success
             assert "unsupported" in error.lower()
 
-    def test_security_headers_and_cors(self):
+    def test_security_headers_and_cors(self, sync_client):
         """Test that security headers and CORS are properly configured."""
-        response = client.get("/health")
+        response = sync_client.get("/health")
 
         # Should have CORS headers
         assert response.status_code == status.HTTP_200_OK
 
         # Test OPTIONS request for CORS
-        response = client.options("/api/v1/auth/login")
+        response = sync_client.options("/api/v1/auth/login")
         assert response.status_code == status.HTTP_200_OK
 
-    def test_comprehensive_error_scenarios(self):
+    def test_comprehensive_error_scenarios(self, sync_client):
         """Test comprehensive error scenarios across all components."""
         # Test validation error
-        response = client.post(
+        response = sync_client.post(
             "/api/v1/auth/register", json={"email": "invalid", "username": "a", "password": "123"}
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
         # Test authentication error
-        response = client.post(
+        response = sync_client.post(
             "/api/v1/auth/login", json={"username": "nonexistent", "password": "wrong"}
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
         # Test authorization error
-        response = client.get("/api/v1/admin/users")
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        response = sync_client.get("/api/v1/admin/users")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
         # Test not found error
-        response = client.get("/api/v1/wishes/99999")
+        response = sync_client.get("/api/v1/wishes/99999")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_file_upload_security_comprehensive(self):
+    def test_file_upload_security_comprehensive(self, sync_client):
         """Test comprehensive file upload security."""
         # Test with various malicious inputs
         test_cases = [
@@ -246,7 +242,7 @@ class TestSecureCodingIntegration:
                 with patch("app.services.file_service.ensure_upload_directory") as mock_ensure:
                     mock_ensure.return_value = True
 
-                    response = client.post("/api/v1/upload/avatar", files=files)
+                    response = sync_client.post("/api/v1/upload/avatar", files=files)
 
                     # Should either succeed with secure handling or fail with validation error
                     assert response.status_code in [
