@@ -5,13 +5,19 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
 
 from app.adapters.database import get_db
 from app.domain.entities import Base
 from app.main import app
 
-SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=False)
+SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite://"
+engine = create_async_engine(
+    SQLALCHEMY_DATABASE_URL,
+    echo=False,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -31,13 +37,21 @@ def event_loop():
     loop.close()
 
 
-@pytest_asyncio.fixture(scope="function")
-async def test_db():
+@pytest_asyncio.fixture(scope="session")
+async def test_db_setup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_db(test_db_setup):
+    yield
+    async with engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(table.delete())
 
 
 @pytest_asyncio.fixture
